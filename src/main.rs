@@ -1,10 +1,15 @@
-use tiny_http::{Server, Response, Method, StatusCode, Request};
-use frank_jwt::{Algorithm, encode};
-use uuid::Uuid;
-
 #[macro_use]
 extern crate serde_json;
 
+use std::io::Error as IoError;
+
+use frank_jwt::{Algorithm, encode, validate_signature};
+use tiny_http::{Method, Request, Response, Server, StatusCode};
+use uuid::Uuid;
+
+
+const SECRET: &str = "secret123";
+const ALGORITHM: Algorithm = Algorithm::HS256;
 
 fn main() {
     let server = Server::http("0.0.0.0:8000").unwrap();
@@ -17,38 +22,33 @@ fn main() {
                  request.url(),
                  request.headers()
         );
-        if request.method() == &Method::Post {
-            handle_post(request)
-        } else if request.method() == &Method::Get {
-            let response = Response::new_empty(StatusCode(403));
-
-            match request.respond(response) {
-                Err(_e) => {
-                    println!("cannot respond")
-                }
-                Ok(()) => {}
+        match handle(request) {
+            Err(_e) => {
+                println!("cannot respond")
             }
-        } else {
-            let response = Response::new_empty(StatusCode(405));
-
-            match request.respond(response) {
-                Err(_e) => {
-                    println!("cannot respond")
-                }
-                Ok(()) => {}
-            }
+            Ok(()) => {}
         }
     }
 }
 
-fn handle_post(request: Request) -> () {
+fn handle(request: Request) -> Result<(), IoError> {
+    if request.method() == &Method::Post {
+        handle_post(request)
+    } else if request.method() == &Method::Get {
+        handle_get(request)
+    } else {
+        let response = Response::new_empty(StatusCode(405));
+        request.respond(response)
+    }
+}
+
+fn handle_post(request: Request) -> Result<(), IoError> {
     let payload = json!({
             "acc": Uuid::new_v4(),
             "pla": vec![Uuid::new_v4()],
         });
     let header = json!({});
-    let secret = "secret123";
-    let response = match encode(header, &secret.to_string(), &payload, Algorithm::HS256)
+    let response = match encode(header, &SECRET, &payload, ALGORITHM)
         {
             Ok(token) => {
                 let mut response = Response::from_string(token.clone());
@@ -66,19 +66,45 @@ fn handle_post(request: Request) -> () {
     if response.is_none() {
         let response = Response::new_empty(StatusCode(500));
 
-        match request.respond(response) {
-            Err(_e) => {
-                println!("cannot respond")
-            }
-            Ok(()) => {}
-        }
+        request.respond(response)
     } else {
-        match request.respond(response.unwrap()) {
-            Err(_e) => {
-                println!("cannot respond")
+        request.respond(response.unwrap())
+    }
+}
+
+fn handle_get(request: Request) -> Result<(), IoError> {
+    let mut authorized = false;
+
+    for h in request.headers() {
+        if h.field.equiv("cookie") {
+            let value = h.value.to_string();
+            let split: Vec<&str> = value.split("=").collect();
+            if split.get(0) == Some(&"jwt") {
+                println!("{} ----> {:?}", h.field, split.get(1));
+                match split.get(1) {
+                    Some(&key) => {
+                        match validate_signature(&key, &SECRET, ALGORITHM) {
+                            Err(_e) => {}
+                            Ok(b) => {
+                                authorized = b
+                            }
+                        }
+                    }
+                    None => {}
+                }
             }
-            Ok(()) => {}
         }
+    }
+    if !authorized {
+        //TODO
+    }
+
+    if authorized {
+        let response = Response::from_string("SUCCESS".to_string());
+        request.respond(response)
+    } else {
+        let response = Response::new_empty(StatusCode(403));
+        request.respond(response)
     }
 }
 
