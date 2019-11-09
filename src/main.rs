@@ -1,4 +1,4 @@
-use tiny_http::{Server, Response, Method, StatusCode};
+use tiny_http::{Server, Response, Method, StatusCode, Request};
 use frank_jwt::{Algorithm, encode};
 use uuid::Uuid;
 
@@ -9,9 +9,18 @@ extern crate serde_json;
 fn main() {
     let server = Server::http("0.0.0.0:8000").unwrap();
 
+    println!("listening on 8000");
+
     for request in server.incoming_requests() {
-        if request.method() != &Method::Post {
-            let response = Response::new_empty(StatusCode(405));
+        println!("received request!\n, method: {:?}\n, url: {:?}\n, headers: {:?}\n",
+                 request.method(),
+                 request.url(),
+                 request.headers()
+        );
+        if request.method() == &Method::Post {
+            handle_post(request)
+        } else if request.method() == &Method::Get {
+            let response = Response::new_empty(StatusCode(403));
 
             match request.respond(response) {
                 Err(_e) => {
@@ -20,47 +29,55 @@ fn main() {
                 Ok(()) => {}
             }
         } else {
-            println!("received request! method: {:?}, url: {:?}, headers: {:?}",
-                     request.method(),
-                     request.url(),
-                     request.headers()
-            );
+            let response = Response::new_empty(StatusCode(405));
 
-            let payload = json!({
+            match request.respond(response) {
+                Err(_e) => {
+                    println!("cannot respond")
+                }
+                Ok(()) => {}
+            }
+        }
+    }
+}
+
+fn handle_post(request: Request) -> () {
+    let payload = json!({
             "acc": Uuid::new_v4(),
             "pla": vec![Uuid::new_v4()],
         });
+    let header = json!({});
+    let secret = "secret123";
+    let response = match encode(header, &secret.to_string(), &payload, Algorithm::HS256)
+        {
+            Ok(token) => {
+                let mut response = Response::from_string(token.clone());
+                let bearer = format!("jwt={}", token);
+                let header = tiny_http::Header::from_bytes(&b"Set-Cookie"[..], bearer.as_bytes()).unwrap();
 
-            let header = json!({});
-            let secret = "secret123";
-            let response = match encode(header, &secret.to_string(), &payload, Algorithm::HS256)
-                {
-                    Ok(token) => {
-                        Some(Response::from_string(token))
-                    }
-
-                    Err(_e) => {
-                        None
-                    }
-                };
-
-            if response.is_none() {
-                let response = Response::new_empty(StatusCode(500));
-
-                match request.respond(response) {
-                    Err(_e) => {
-                        println!("cannot respond")
-                    }
-                    Ok(()) => {}
-                }
-            } else {
-                match request.respond(response.unwrap()) {
-                    Err(_e) => {
-                        println!("cannot respond")
-                    }
-                    Ok(()) => {}
-                }
+                response.add_header(header);
+                Some(response)
             }
+
+            Err(_e) => {
+                None
+            }
+        };
+    if response.is_none() {
+        let response = Response::new_empty(StatusCode(500));
+
+        match request.respond(response) {
+            Err(_e) => {
+                println!("cannot respond")
+            }
+            Ok(()) => {}
+        }
+    } else {
+        match request.respond(response.unwrap()) {
+            Err(_e) => {
+                println!("cannot respond")
+            }
+            Ok(()) => {}
         }
     }
 }
