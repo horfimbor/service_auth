@@ -7,8 +7,8 @@ use frank_jwt::{Algorithm, encode, validate_signature};
 use tiny_http::{Method, Request, Response, Server, StatusCode};
 use uuid::Uuid;
 
-
 const SECRET: &str = "secret123";
+const COOKIE_PREFIX: &str = "token";
 const ALGORITHM: Algorithm = Algorithm::HS256;
 
 fn main() {
@@ -52,7 +52,7 @@ fn handle_post(request: Request) -> Result<(), IoError> {
         {
             Ok(token) => {
                 let mut response = Response::from_string(token.clone());
-                let bearer = format!("jwt={}", token);
+                let bearer = format!("{}={}", COOKIE_PREFIX, token);
                 let header = tiny_http::Header::from_bytes(&b"Set-Cookie"[..], bearer.as_bytes()).unwrap();
 
                 response.add_header(header);
@@ -78,19 +78,27 @@ fn handle_get(request: Request) -> Result<(), IoError> {
     for h in request.headers() {
         if h.field.equiv("cookie") {
             let value = h.value.to_string();
-            let split: Vec<&str> = value.split("=").collect();
-            if split.get(0) == Some(&"jwt") {
-                println!("{} ----> {:?}", h.field, split.get(1));
-                match split.get(1) {
-                    Some(&key) => {
-                        match validate_signature(&key, &SECRET, ALGORITHM) {
-                            Err(_e) => {}
-                            Ok(b) => {
-                                authorized = b
+
+
+            let cookie_values: Vec<&str> = value.split("; ").collect();
+
+            for cookie_value in cookie_values {
+                if !authorized {
+                    let split: Vec<&str> = cookie_value.split("=").collect();
+                    println!("{:?}", split);
+                    if split.get(0) == Some(&COOKIE_PREFIX) {
+                        match split.get(1) {
+                            Some(&key) => {
+                                match validate_signature(&key, &SECRET, ALGORITHM) {
+                                    Err(_e) => {}
+                                    Ok(b) => {
+                                        authorized = b
+                                    }
+                                }
                             }
+                            None => {}
                         }
                     }
-                    None => {}
                 }
             }
         }
