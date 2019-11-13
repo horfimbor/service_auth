@@ -3,13 +3,14 @@ extern crate serde_json;
 
 use std::io::Error as IoError;
 
-use frank_jwt::{Algorithm, encode, validate_signature};
+use frank_jwt::{Algorithm, validate_signature};
 use tiny_http::{Method, Request, Response, Server, StatusCode};
 use uuid::Uuid;
 
 const SECRET: &str = "secret123";
-const COOKIE_PREFIX: &str = "token";
 const ALGORITHM: Algorithm = Algorithm::HS256;
+const COOKIE_PREFIX: &str = "token";
+
 
 fn main() {
     let server = Server::http("0.0.0.0:8000").unwrap();
@@ -43,12 +44,9 @@ fn handle(request: Request) -> Result<(), IoError> {
 }
 
 fn handle_post(request: Request) -> Result<(), IoError> {
-    let payload = json!({
-            "acc": Uuid::new_v4(),
-            "pla": vec![Uuid::new_v4()],
-        });
-    let header = json!({});
-    let response = match encode(header, &SECRET, &payload, ALGORITHM)
+    let data = mod_token::Data::new(Uuid::new_v4());
+
+    let response = match mod_token::generate_token(data)
         {
             Ok(token) => {
                 let mut response = Response::from_string(token.clone());
@@ -79,7 +77,6 @@ fn handle_get(request: Request) -> Result<(), IoError> {
         if h.field.equiv("cookie") {
             let value = h.value.to_string();
 
-
             let cookie_values: Vec<&str> = value.split("; ").collect();
 
             for cookie_value in cookie_values {
@@ -89,12 +86,7 @@ fn handle_get(request: Request) -> Result<(), IoError> {
                     if split.get(0) == Some(&COOKIE_PREFIX) {
                         match split.get(1) {
                             Some(&key) => {
-                                match validate_signature(&key, &SECRET, ALGORITHM) {
-                                    Err(_e) => {}
-                                    Ok(b) => {
-                                        authorized = b
-                                    }
-                                }
+                                authorized = mod_token::check_token(&key);
                             }
                             None => {}
                         }
