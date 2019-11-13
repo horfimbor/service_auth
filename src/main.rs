@@ -1,14 +1,10 @@
-#[macro_use]
 extern crate serde_json;
 
 use std::io::Error as IoError;
 
-use frank_jwt::{Algorithm, validate_signature};
 use tiny_http::{Method, Request, Response, Server, StatusCode};
 use uuid::Uuid;
 
-const SECRET: &str = "secret123";
-const ALGORITHM: Algorithm = Algorithm::HS256;
 const COOKIE_PREFIX: &str = "token";
 
 
