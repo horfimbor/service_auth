@@ -142,7 +142,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "mod_token"
 version = "0.1.0"
-source = "git+https://github.com/horfimbor/mod_token#1eb682abbd058044582a8b44b99c812bd3688937"
+source = "git+https://github.com/horfimbor/mod_token#877e6f26ff909dc51906fca6e40848a317b270bd"
 dependencies = [
  "frank_jwt 3.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.102 (registry+https://github.com/rust-lang/crates.io-index)",
