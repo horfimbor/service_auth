@@ -21,5 +21,5 @@ jobs:
           --build-arg MOD_AUTH_SECRET_DEFAULT="${{ secrets.MOD_TOKEN_SECRET }}" \
           --tag docker.pkg.github.com/horfimbor/service_auth:$GITHUB_ACTION .
       - name: docker push
-      - run: docker push docker.pkg.github.com/horfimbor/service_auth:$GITHUB_ACTION
+        run: docker push docker.pkg.github.com/horfimbor/service_auth:$GITHUB_ACTION
 
