@@ -13,6 +13,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
+    - name: rustup
+      run: rustup toolchain install ${{ matrix.rust-version }}
     - name: Build
       run: cargo +${{ matrix.rust-version }} build --verbose
     - name: Run tests
