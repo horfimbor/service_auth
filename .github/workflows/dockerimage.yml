@@ -17,7 +17,7 @@ jobs:
       - name: docker login
         run: docker login docker.pkg.github.com -u Aedius -p ${{ secrets.package_token }}
       - name: Build the Docker image
-        run: docker build --file Dockerfile --build-arg MOD_AUTH_SECRET_DEFAULT="${{ secrets.MOD_TOKEN_SECRET }}" --tag docker.pkg.github.com/horfimbor/service_auth/service-auth:$GITHUB_ACTION .
+        run: docker build --file Dockerfile --build-arg MOD_AUTH_SECRET_DEFAULT="${{ secrets.MOD_TOKEN_SECRET }}" --tag docker.pkg.github.com/horfimbor/service_auth/service_auth:$(date +%s) .
       - name: docker push
-        run: docker push docker.pkg.github.com/horfimbor/service_auth/service_auth:$GITHUB_ACTION
+        run: docker push docker.pkg.github.com/horfimbor/service_auth/service_auth:$(date +%s)
 
