@@ -4,6 +4,8 @@ rust:
   - beta
   - nightly
 
+env:
+  - MOD_TOKEN_SECRET=travis-secret-123
 
 matrix:
   allow_failures:
