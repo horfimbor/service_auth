@@ -10,5 +10,5 @@ edition = "2018"
 mod_token = { git = "https://github.com/horfimbor/mod_token" }
 tiny_http="0.6.2"
 uuid = { version = "0.8", features = ["serde", "v4"] }
-serde = "1.0.102"
+serde = "1.0.103"
 serde_json = "1.0.41"
