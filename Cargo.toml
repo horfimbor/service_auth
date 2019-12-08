@@ -8,7 +8,9 @@ edition = "2018"
 
 [dependencies]
 mod_token = { git = "https://github.com/horfimbor/mod_token" }
-tiny_http="0.6.2"
-uuid = { version = "0.8", features = ["serde", "v4"] }
+
+rust-crypto = "^0.2"
 serde = "1.0.103"
 serde_json = "1.0.44"
+tiny_http="0.6.2"
+uuid = { version = "0.8", features = ["serde", "v4"] }

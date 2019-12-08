@@ -40,6 +40,8 @@ ENV MOD_AUTH_SECRET=$MOD_AUTH_SECRET_DEFAULT
 ENV RUST_LOG="error,$BINARY_NAME=info"
 COPY --from=builder /build-out/$BINARY_NAME /
 
+COPY static/ /
+
 # Start with an execution list (there is no sh in a scratch image)
 # No shell => no variable expansion, |, <, >, etc
 # Hard coded start command

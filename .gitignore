@@ -8,3 +8,4 @@
 # IntelliJ IDEA
 /service-auth.iml
 /.idea/
+/.env

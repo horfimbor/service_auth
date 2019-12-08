@@ -5,7 +5,7 @@ rust:
   - nightly
 
 env:
-  - MOD_TOKEN_SECRET=travis-secret-123
+  - MOD_AUTH_SECRET=travis-secret-123
 
 matrix:
   allow_failures:
