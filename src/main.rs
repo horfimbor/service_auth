@@ -1,16 +1,21 @@
 extern crate serde_json;
 
-use std::io::Error as IoError;
+use std::io::{Error as IoError, Cursor};
 use std::path::Path;
 use std::fs;
 
 use crypto::sha1::Sha1;
 use crypto::digest::Digest;
+use serde::{Deserialize};
 use tiny_http::{Method, Request, Response, Server, StatusCode};
 use uuid::Uuid;
 
 const COOKIE_PREFIX: &str = "token";
 
+#[derive(Deserialize)]
+struct Login{
+    passphrase: String
+}
 
 fn main() {
     let server = Server::http("0.0.0.0:8000").unwrap();
@@ -37,6 +42,8 @@ fn handle(request: Request) -> Result<(), IoError> {
         handle_post(request)
     } else if request.method() == &Method::Get {
         handle_get(request)
+    } else if request.method() == &Method::Options {
+        handle_option(request)
     } else {
         let response = Response::new_empty(StatusCode(405));
         request.respond(response)
@@ -44,22 +51,35 @@ fn handle(request: Request) -> Result<(), IoError> {
 }
 
 fn handle_post(mut request: Request) -> Result<(), IoError> {
-    let data = mod_token::Data::new(Uuid::new_v4());
 
     let mut content = String::new();
     request.as_reader().read_to_string(&mut content).unwrap();
 
-    if &content[..11] != "passphrase=" {
-        let response = Response::new_empty(StatusCode(500));
-        return request.respond(response);
+    let deserialize: serde_json::Result<Login> = serde_json::from_str(&content.as_str());
+
+    match deserialize {
+        Ok(login) => {
+            return handle_login(request, login)
+        }
+        Err(_e) => {
+            let response = Response::new_empty(StatusCode(500));
+            return request.respond(response);
+        }
     }
+}
+
+fn handle_login(request: Request, login : Login) -> Result<(), IoError>{
 
     let mut hasher = Sha1::new();
-    hasher.input_str(&content[11..]);
+    hasher.input_str(login.passphrase.as_str());
 
     let hex = hasher.result_str();
 
+    println!("encode : {}", hex);
 
+    //TODO check account exist :
+
+    let data = mod_token::Data::new(Uuid::new_v4());
     let response = match mod_token::generate_token(data)
         {
             Ok(token) => {
@@ -68,6 +88,8 @@ fn handle_post(mut request: Request) -> Result<(), IoError> {
                 let header = tiny_http::Header::from_bytes(&b"Set-Cookie"[..], bearer.as_bytes()).unwrap();
 
                 response.add_header(header);
+
+                add_cors(&mut response);
                 Some(response)
             }
 
@@ -80,14 +102,14 @@ fn handle_post(mut request: Request) -> Result<(), IoError> {
 
         request.respond(response)
     } else {
+
+
         request.respond(response.unwrap())
     }
 }
 
 fn handle_get(request: Request) -> Result<(), IoError> {
     let mut authorized = false;
-
-    println!("{:?}", request);
 
     let url = request.url().to_string();
     let path = Path::new(&url);
@@ -136,5 +158,30 @@ fn handle_get(request: Request) -> Result<(), IoError> {
         let response = Response::new_empty(StatusCode(403));
         request.respond(response)
     }
+}
+
+fn handle_option(request: Request) -> Result<(), IoError> {
+
+    // TODO check "Host"
+
+    let mut response = Response::from_string("ok");
+
+    add_cors(&mut response);
+
+    request.respond(response)
+
+}
+
+fn add_cors(response: &mut Response<Cursor<Vec<u8>>>) {
+    let header = tiny_http::Header::from_bytes(&b"Access-Control-Allow-Origin"[..], &b"http://localhost"[..]).unwrap();
+    response.add_header(header);
+    let header = tiny_http::Header::from_bytes(&b"Access-Control-Allow-Methods"[..], &b"POST, GET"[..]).unwrap();
+    response.add_header(header);
+    let header = tiny_http::Header::from_bytes(&b"Access-Control-Max-Age"[..], &b"86400"[..]).unwrap();
+    response.add_header(header);
+    let header = tiny_http::Header::from_bytes(&b"Vary"[..], &b"Origin"[..]).unwrap();
+    response.add_header(header);
+    let header = tiny_http::Header::from_bytes(&b"Access-Control-Allow-Headers"[..], &b"body, cache, Content-Type"[..]).unwrap();
+    response.add_header(header);
 }
 
