@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate mysql;
+
 extern crate serde_json;
 
 use std::io::{Error as IoError, Cursor};
@@ -6,18 +9,30 @@ use std::fs;
 
 use crypto::sha1::Sha1;
 use crypto::digest::Digest;
-use serde::{Deserialize};
+use mysql::Pool;
+use serde::Deserialize;
 use tiny_http::{Method, Request, Response, Server, StatusCode};
 use uuid::Uuid;
 
 const COOKIE_PREFIX: &str = "token";
 
 #[derive(Deserialize)]
-struct Login{
+struct Login {
     passphrase: String
 }
 
+#[derive(Debug, PartialEq, Eq)]
+struct Account {
+    passphrase: String,
+    uuid: String,
+    is_admin: bool,
+}
+
 fn main() {
+    let pool = mysql::Pool::new("mysql://root:rootpwd@infra_dev_db_1:3306/service_auth").unwrap();
+
+    init_bdd(&pool);
+
     let server = Server::http("0.0.0.0:8000").unwrap();
 
     println!("listening on 8000");
@@ -28,7 +43,7 @@ fn main() {
                  request.url(),
                  request.headers(),
         );
-        match handle(request) {
+        match handle(request, &pool) {
             Err(_e) => {
                 println!("cannot respond")
             }
@@ -37,9 +52,17 @@ fn main() {
     }
 }
 
-fn handle(request: Request) -> Result<(), IoError> {
+fn init_bdd(pool: &Pool) {
+    pool.prep_exec(r"CREATE TABLE if not exists account (
+                         passphrase varchar(50) not null,
+                         uuid varchar(50) not null,
+                         is_admin tinyint not null default 0
+                     )", ()).unwrap();
+}
+
+fn handle(request: Request, pool: &Pool) -> Result<(), IoError> {
     if request.method() == &Method::Post {
-        handle_post(request)
+        handle_post(request, &pool)
     } else if request.method() == &Method::Get {
         handle_get(request)
     } else if request.method() == &Method::Options {
@@ -50,8 +73,7 @@ fn handle(request: Request) -> Result<(), IoError> {
     }
 }
 
-fn handle_post(mut request: Request) -> Result<(), IoError> {
-
+fn handle_post(mut request: Request, pool: &Pool) -> Result<(), IoError> {
     let mut content = String::new();
     request.as_reader().read_to_string(&mut content).unwrap();
 
@@ -59,7 +81,7 @@ fn handle_post(mut request: Request) -> Result<(), IoError> {
 
     match deserialize {
         Ok(login) => {
-            return handle_login(request, login)
+            return handle_login(request, login, &pool);
         }
         Err(_e) => {
             let response = Response::new_empty(StatusCode(500));
@@ -68,18 +90,19 @@ fn handle_post(mut request: Request) -> Result<(), IoError> {
     }
 }
 
-fn handle_login(request: Request, login : Login) -> Result<(), IoError>{
-
+fn handle_login(request: Request, login: Login, pool: &Pool) -> Result<(), IoError> {
     let mut hasher = Sha1::new();
+
+    // TODO add salt
     hasher.input_str(login.passphrase.as_str());
 
-    let hex = hasher.result_str();
+    let encoded_pass_phrase = hasher.result_str();
 
-    println!("encode : {}", hex);
 
-    //TODO check account exist :
+    let uuid = get_uuid(encoded_pass_phrase, pool);
 
-    let data = mod_token::Data::new(Uuid::new_v4());
+    let data = mod_token::Data::new(uuid);
+
     let response = match mod_token::generate_token(data)
         {
             Ok(token) => {
@@ -102,9 +125,35 @@ fn handle_login(request: Request, login : Login) -> Result<(), IoError>{
 
         request.respond(response)
     } else {
-
-
         request.respond(response.unwrap())
+    }
+}
+
+fn get_uuid(encoded_pass_phrase: String, pool: &Pool) -> Uuid {
+    let pp = encoded_pass_phrase.clone();
+    let accounts: Vec<Account> =
+        pool.prep_exec("SELECT passphrase, uuid, is_admin FROM account WHERE passphrase = :pp", params! {pp})
+            .map(|result| {
+                result.map(|x| x.unwrap())
+                    .map(|row| {
+                        let (passphrase, uuid, is_admin) = mysql::from_row(row);
+                        Account {
+                            passphrase,
+                            uuid,
+                            is_admin,
+                        }
+                    }).collect()
+            }).unwrap();
+    if accounts.len() == 0 {
+        let uuid = Uuid::new_v4();
+
+        pool.prep_exec("INSERT INTO account (passphrase, uuid) VALUES (:pp , :uuid)",
+                       params! {"pp" => encoded_pass_phrase, "uuid" => uuid.to_string() }).unwrap();
+
+        return uuid;
+    } else {
+        let acc = accounts.first().unwrap();
+        return Uuid::parse_str(acc.uuid.as_str()).unwrap();
     }
 }
 
@@ -169,7 +218,6 @@ fn handle_option(request: Request) -> Result<(), IoError> {
     add_cors(&mut response);
 
     request.respond(response)
-
 }
 
 fn add_cors(response: &mut Response<Cursor<Vec<u8>>>) {
