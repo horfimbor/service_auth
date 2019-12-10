@@ -1,4 +1,4 @@
-class Auth extends HTMLElement {
+class Login extends HTMLElement {
     constructor() {
         super();
 
@@ -36,8 +36,7 @@ class Auth extends HTMLElement {
             .then(res => res.text()) // parse response as JSON with res.json
             .then(response => {
                 console.log({service:"auth", status:"ok", resp:response})
-                var event = new CustomEvent('login', { 'detail': response });
-                document.dispatchEvent(event);
+
             })
             .catch(err => {
                 console.log({service:"auth", status:"KO", error:err})
@@ -45,4 +44,4 @@ class Auth extends HTMLElement {
             });
     }
 }
-customElements.define('hf-auth-login', Auth);
+customElements.define('hf-auth-login', Login);
