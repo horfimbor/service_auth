@@ -5,19 +5,16 @@ class Auth extends HTMLElement {
         this.attachShadow({ mode: 'open' });
 
         if(localStorage.getItem("jwt")){
+            import('http://localhost:8000/js/logout.js').then(module => {
+              console.log('logout loaded')
+            });
             this.shadowRoot.innerHTML = `<hf-auth-logout></hf-auth-logout>`
         }else{
+            import('http://localhost:8000/js/login.js').then(module => {
+              console.log('login loaded')
+            });
             this.shadowRoot.innerHTML = `<hf-auth-login></hf-auth-login>`
         }
-    }
-
-    connectedCallback() {
-        import('http://localhost:8000/js/login.js').then(module => {
-          console.log('load login')
-        });
-        import('http://localhost:8000/js/logout.js').then(module => {
-          console.log('load logout')
-        });
     }
 
     _getJwt(){

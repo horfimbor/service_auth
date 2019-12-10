@@ -14,11 +14,15 @@ use serde::Deserialize;
 use tiny_http::{Method, Request, Response, Server, StatusCode};
 use uuid::Uuid;
 
-const COOKIE_PREFIX: &str = "token";
-
 #[derive(Deserialize)]
 struct Login {
     passphrase: String
+}
+
+#[derive(Deserialize)]
+struct Signup {
+    passphrase: String,
+    name: String, // use this to send event account created
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -29,7 +33,6 @@ struct Account {
 }
 
 fn main() {
-
     let pool = init_bdd();
 
     let server = Server::http("0.0.0.0:8000").unwrap();
@@ -51,10 +54,10 @@ fn main() {
     }
 }
 
-fn init_bdd() -> Pool{
+fn init_bdd() -> Pool {
     // TODO check env == dev
 
-    let pool = match mysql::Pool::new("mysql://root:rootpwd@infra_dev_db_1:3306/service_auth"){
+    let pool = match mysql::Pool::new("mysql://root:rootpwd@infra_dev_db_1:3306/service_auth") {
         Ok(pool) => {
             pool
         }
@@ -83,26 +86,48 @@ fn handle(request: Request, pool: &Pool) -> Result<(), IoError> {
     } else if request.method() == &Method::Options {
         handle_option(request)
     } else {
-        let response = Response::new_empty(StatusCode(405));
+        let mut response = Response::new_empty(StatusCode(405));
+        add_cors(&request, &mut response);
         request.respond(response)
     }
 }
 
 fn handle_post(mut request: Request, pool: &Pool) -> Result<(), IoError> {
     let mut content = String::new();
+
+
+    let url = request.url().to_string();
     request.as_reader().read_to_string(&mut content).unwrap();
 
-    let deserialize: serde_json::Result<Login> = serde_json::from_str(&content.as_str());
-
-    match deserialize {
-        Ok(login) => {
-            return handle_login(request, login, &pool);
+    if url == "login" {
+        let deserialize: serde_json::Result<Login> = serde_json::from_str(&content.as_str());
+        match deserialize {
+            Ok(login) => {
+                return handle_login(request, login, &pool);
+            }
+            Err(_e) => {
+                let mut response = Response::new_empty(StatusCode(500));
+                add_cors(&request, &mut response);
+                return request.respond(response);
+            }
         }
-        Err(_e) => {
-            let response = Response::new_empty(StatusCode(500));
-            return request.respond(response);
+    } else if url == "signup" {
+        let deserialize: serde_json::Result<Signup> = serde_json::from_str(&content.as_str());
+        match deserialize {
+            Ok(signup) => {
+                return handle_signup(request, signup, &pool);
+            }
+            Err(_e) => {
+                let mut response = Response::new_empty(StatusCode(500));
+                add_cors(&request, &mut response);
+                return request.respond(response);
+            }
         }
     }
+
+    let mut response = Response::new_empty(StatusCode(500));
+    add_cors(&request, &mut response);
+    return request.respond(response);
 }
 
 fn handle_login(request: Request, login: Login, pool: &Pool) -> Result<(), IoError> {
@@ -114,37 +139,94 @@ fn handle_login(request: Request, login: Login, pool: &Pool) -> Result<(), IoErr
     let encoded_pass_phrase = hasher.result_str();
 
 
-    let uuid = get_uuid(encoded_pass_phrase, pool);
+    let uuid_option = get_uuid(encoded_pass_phrase, pool);
 
-    let data = mod_token::Data::new(uuid);
+    let response = match uuid_option {
+        Some(uuid) => {
+            let data = mod_token::Data::new(uuid);
 
-    let response = match mod_token::generate_token(data)
-        {
-            Ok(token) => {
-                let mut response = Response::from_string(token.clone());
-                let bearer = format!("{}={}", COOKIE_PREFIX, token);
-                let header = tiny_http::Header::from_bytes(&b"Set-Cookie"[..], bearer.as_bytes()).unwrap();
+            match mod_token::generate_token(data)
+                {
+                    Ok(token) => {
+                        let mut response = Response::from_string(token.clone());
+                        add_cors(&request, &mut response);
+                        Some(response)
+                    }
 
-                response.add_header(header);
+                    Err(_e) => {
+                        None
+                    }
+                }
+        }
+        None => {
+            let mut response = Response::from_string("data_required");
 
-                add_cors(&request, &mut response);
-                Some(response)
-            }
+            add_cors(&request, &mut response);
+            Some(response)
+        }
+    };
 
-            Err(_e) => {
-                None
-            }
-        };
+
     if response.is_none() {
-        let response = Response::new_empty(StatusCode(500));
+        let mut response = Response::new_empty(StatusCode(500));
+        add_cors(&request, &mut response);
+        request.respond(response)
+    } else {
 
+        request.respond(response.unwrap())
+    }
+}
+
+fn handle_signup(request: Request, signup: Signup, pool: &Pool) -> Result<(), IoError> {
+    let mut hasher = Sha1::new();
+
+    // TODO add salt
+    hasher.input_str(signup.passphrase.as_str());
+
+    let encoded_pass_phrase = hasher.result_str();
+
+    let uuid = Uuid::new_v4();
+
+    pool.prep_exec("INSERT INTO account (passphrase, uuid) VALUES (:pp , :uuid)",
+                   params! {"pp" => encoded_pass_phrase, "uuid" => uuid.to_string() }).unwrap();
+
+    let encoded_pass_phrase = hasher.result_str();
+
+    let uuid_option = get_uuid(encoded_pass_phrase, pool);
+
+    let response = match uuid_option {
+        Some(uuid) => {
+            let data = mod_token::Data::new(uuid);
+
+            match mod_token::generate_token(data)
+                {
+                    Ok(token) => {
+                        let mut response = Response::from_string(token.clone());
+                        add_cors(&request, &mut response);
+
+                        Some(response)
+                    }
+                    Err(_e) => {
+                        None
+                    }
+                }
+        }
+        None => {
+            None
+        }
+    };
+
+
+    if response.is_none() {
+        let mut response = Response::new_empty(StatusCode(500));
+        add_cors(&request, &mut response);
         request.respond(response)
     } else {
         request.respond(response.unwrap())
     }
 }
 
-fn get_uuid(encoded_pass_phrase: String, pool: &Pool) -> Uuid {
+fn get_uuid(encoded_pass_phrase: String, pool: &Pool) -> Option<Uuid> {
     let pp = encoded_pass_phrase.clone();
     let accounts: Vec<Account> =
         pool.prep_exec("SELECT passphrase, uuid, is_admin FROM account WHERE passphrase = :pp", params! {pp})
@@ -160,20 +242,15 @@ fn get_uuid(encoded_pass_phrase: String, pool: &Pool) -> Uuid {
                     }).collect()
             }).unwrap();
     if accounts.len() == 0 {
-        let uuid = Uuid::new_v4();
-
-        pool.prep_exec("INSERT INTO account (passphrase, uuid) VALUES (:pp , :uuid)",
-                       params! {"pp" => encoded_pass_phrase, "uuid" => uuid.to_string() }).unwrap();
-
-        return uuid;
+        return None;
     } else {
         let acc = accounts.first().unwrap();
-        return Uuid::parse_str(acc.uuid.as_str()).unwrap();
+        return Some(Uuid::parse_str(acc.uuid.as_str()).unwrap());
     }
 }
 
 fn handle_get(request: Request) -> Result<(), IoError> {
-    let mut authorized = false;
+    let authorized = false;
 
     let url = request.url().to_string();
     let path = Path::new(&url);
@@ -190,31 +267,7 @@ fn handle_get(request: Request) -> Result<(), IoError> {
     }
 
 
-    for h in request.headers() {
-        if h.field.equiv("cookie") {
-            let value = h.value.to_string();
-
-            let cookie_values: Vec<&str> = value.split("; ").collect();
-
-            for cookie_value in cookie_values {
-                if !authorized {
-                    let split: Vec<&str> = cookie_value.split("=").collect();
-                    println!("{:?}", split);
-                    if split.get(0) == Some(&COOKIE_PREFIX) {
-                        match split.get(1) {
-                            Some(&key) => {
-                                authorized = mod_token::check_token(&key);
-                            }
-                            None => {}
-                        }
-                    }
-                }
-            }
-        }
-    }
-    if !authorized {
-        //TODO
-    }
+    //TODO check bearer for jwt (or not ?) for authorized = true
 
     if authorized {
         let mut response = Response::from_string("SUCCESS".to_string());
@@ -238,11 +291,9 @@ fn handle_option(request: Request) -> Result<(), IoError> {
     request.respond(response)
 }
 
-fn add_cors<T: Read>( request: &Request, response: &mut Response<T>)  {
-
-    for h in request.headers(){
+fn add_cors<T: Read>(request: &Request, response: &mut Response<T>) {
+    for h in request.headers() {
         if h.field.equiv("Origin") {
-
             let header = tiny_http::Header::from_bytes(&b"Access-Control-Allow-Origin"[..], h.value.as_bytes()).unwrap();
             response.add_header(header);
         }

@@ -24,7 +24,7 @@ class Login extends HTMLElement {
 
         console.debug(this.shadowRoot.querySelector(".passphrase").value)
 
-        fetch("http://localhost:8000/", {
+        fetch("http://localhost:8000/login", {
                 method : "POST",
                 headers: {
                    cache : "no-cache"
@@ -35,7 +35,16 @@ class Login extends HTMLElement {
             })
             .then(res => res.text()) // parse response as JSON with res.json
             .then(response => {
-                console.log({service:"auth", status:"ok", resp:response})
+
+                if(response === "data_required"){
+                    import('http://localhost:8000/js/signup.js').then(module => {
+                      console.log('signup loaded')
+                    });
+                    this.shadowRoot.innerHTML = `<hf-auth-signup> </hf-auth-signup>  `
+                }else{
+                    console.log({service:"auth", status:"ok", resp:response})
+                }
+
 
             })
             .catch(err => {

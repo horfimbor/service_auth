@@ -13,6 +13,5 @@ class Logout extends HTMLElement {
     disconnectedCallback() {
         this.shadowRoot.querySelector(".logout").removeEventListener('submit', this._logout);
     }
-
 }
-customElements.define('hf-auth-logout', Login);
+customElements.define('hf-auth-logout', Logout);
