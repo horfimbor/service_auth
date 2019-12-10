@@ -29,9 +29,8 @@ struct Account {
 }
 
 fn main() {
-    let pool = mysql::Pool::new("mysql://root:rootpwd@infra_dev_db_1:3306/service_auth").unwrap();
 
-    init_bdd(&pool);
+    let pool = init_bdd();
 
     let server = Server::http("0.0.0.0:8000").unwrap();
 
@@ -52,12 +51,28 @@ fn main() {
     }
 }
 
-fn init_bdd(pool: &Pool) {
+fn init_bdd() -> Pool{
+    // TODO check env == dev
+
+    let pool = match mysql::Pool::new("mysql://root:rootpwd@infra_dev_db_1:3306/service_auth"){
+        Ok(pool) => {
+            pool
+        }
+        Err(_e) => {
+            let tmp_pool = mysql::Pool::new("mysql://root:rootpwd@infra_dev_db_1:3306/mysql").unwrap();
+            tmp_pool.prep_exec(r"CREATE database service_auth", ()).unwrap();
+
+            mysql::Pool::new("mysql://root:rootpwd@infra_dev_db_1:3306/service_auth").unwrap()
+        }
+    };
+
     pool.prep_exec(r"CREATE TABLE if not exists account (
                          passphrase varchar(50) not null,
                          uuid varchar(50) not null,
                          is_admin tinyint not null default 0
                      )", ()).unwrap();
+
+    pool
 }
 
 fn handle(request: Request, pool: &Pool) -> Result<(), IoError> {
