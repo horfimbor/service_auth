@@ -3,7 +3,7 @@ extern crate mysql;
 
 extern crate serde_json;
 
-use std::io::{Error as IoError, Cursor};
+use std::io::{Error as IoError, Read};
 use std::path::Path;
 use std::fs;
 
@@ -127,7 +127,7 @@ fn handle_login(request: Request, login: Login, pool: &Pool) -> Result<(), IoErr
 
                 response.add_header(header);
 
-                add_cors(&mut response);
+                add_cors(&request, &mut response);
                 Some(response)
             }
 
@@ -184,6 +184,7 @@ fn handle_get(request: Request) -> Result<(), IoError> {
         let header = tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"application/javascript"[..]).unwrap();
 
         response.add_header(header);
+        add_cors(&request, &mut response);
 
         return request.respond(response);
     }
@@ -216,10 +217,12 @@ fn handle_get(request: Request) -> Result<(), IoError> {
     }
 
     if authorized {
-        let response = Response::from_string("SUCCESS".to_string());
+        let mut response = Response::from_string("SUCCESS".to_string());
+        add_cors(&request, &mut response);
         request.respond(response)
     } else {
-        let response = Response::new_empty(StatusCode(403));
+        let mut response = Response::new_empty(StatusCode(403));
+        add_cors(&request, &mut response);
         request.respond(response)
     }
 }
@@ -230,14 +233,21 @@ fn handle_option(request: Request) -> Result<(), IoError> {
 
     let mut response = Response::from_string("ok");
 
-    add_cors(&mut response);
+    add_cors(&request, &mut response);
 
     request.respond(response)
 }
 
-fn add_cors(response: &mut Response<Cursor<Vec<u8>>>) {
-    let header = tiny_http::Header::from_bytes(&b"Access-Control-Allow-Origin"[..], &b"http://localhost"[..]).unwrap();
-    response.add_header(header);
+fn add_cors<T: Read>( request: &Request, response: &mut Response<T>)  {
+
+    for h in request.headers(){
+        if h.field.equiv("Origin") {
+
+            let header = tiny_http::Header::from_bytes(&b"Access-Control-Allow-Origin"[..], h.value.as_bytes()).unwrap();
+            response.add_header(header);
+        }
+    }
+
     let header = tiny_http::Header::from_bytes(&b"Access-Control-Allow-Methods"[..], &b"POST, GET"[..]).unwrap();
     response.add_header(header);
     let header = tiny_http::Header::from_bytes(&b"Access-Control-Max-Age"[..], &b"86400"[..]).unwrap();

@@ -11,6 +11,15 @@ class Auth extends HTMLElement {
         }
     }
 
+    connectedCallback() {
+        import('http://localhost:8000/js/login.js').then(module => {
+          console.log('load login')
+        });
+        import('http://localhost:8000/js/logout.js').then(module => {
+          console.log('load logout')
+        });
+    }
+
     _getJwt(){
 
         // TODO add refresh
