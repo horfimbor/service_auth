@@ -36,6 +36,8 @@ class Auth extends HTMLElement {
             .then(res => res.text()) // parse response as JSON with res.json
             .then(response => {
                 console.log({service:"auth", status:"ok", resp:response})
+                var event = new CustomEvent('login', { 'detail': response });
+                document.dispatchEvent(event);
             })
             .catch(err => {
                 console.log({service:"auth", status:"KO", error:err})
