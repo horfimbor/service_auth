@@ -22,7 +22,9 @@ class Login extends HTMLElement {
     _login(e) {
         e.preventDefault();
 
-        console.debug(this.shadowRoot.querySelector(".passphrase").value)
+        let passphrase = this.shadowRoot.querySelector(".passphrase").value
+
+        console.debug(passphrase)
 
         fetch("http://localhost:8000/login", {
                 method : "POST",
@@ -30,22 +32,20 @@ class Login extends HTMLElement {
                    cache : "no-cache"
                 },
                 body : JSON.stringify({
-                    passphrase: this.shadowRoot.querySelector(".passphrase").value
+                    passphrase: passphrase
                 }),
             })
             .then(res => res.text()) // parse response as JSON with res.json
             .then(response => {
 
                 if(response === "data_required"){
-                    import('http://localhost:8000/js/signup.js').then(module => {
-                      console.log('signup loaded')
-                    });
-                    this.shadowRoot.innerHTML = `<hf-auth-signup> </hf-auth-signup>  `
+                       e.preventDefault();
+                       var event = new CustomEvent('_auth_signup', { 'detail': passphrase });
+                       document.dispatchEvent(event);
                 }else{
-                    console.log({service:"auth", status:"ok", resp:response})
+                    var event = new CustomEvent('_auth_login', { 'detail': response });
+                    document.dispatchEvent(event);
                 }
-
-
             })
             .catch(err => {
                 console.log({service:"auth", status:"KO", error:err})

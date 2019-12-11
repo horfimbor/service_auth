@@ -14,12 +14,12 @@ use serde::Deserialize;
 use tiny_http::{Method, Request, Response, Server, StatusCode};
 use uuid::Uuid;
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 struct Login {
     passphrase: String
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 struct Signup {
     passphrase: String,
     name: String, // use this to send event account created
@@ -99,7 +99,7 @@ fn handle_post(mut request: Request, pool: &Pool) -> Result<(), IoError> {
     let url = request.url().to_string();
     request.as_reader().read_to_string(&mut content).unwrap();
 
-    if url == "login" {
+    if url == "/login" {
         let deserialize: serde_json::Result<Login> = serde_json::from_str(&content.as_str());
         match deserialize {
             Ok(login) => {
@@ -111,7 +111,7 @@ fn handle_post(mut request: Request, pool: &Pool) -> Result<(), IoError> {
                 return request.respond(response);
             }
         }
-    } else if url == "signup" {
+    } else if url == "/signup" {
         let deserialize: serde_json::Result<Signup> = serde_json::from_str(&content.as_str());
         match deserialize {
             Ok(signup) => {
@@ -137,7 +137,6 @@ fn handle_login(request: Request, login: Login, pool: &Pool) -> Result<(), IoErr
     hasher.input_str(login.passphrase.as_str());
 
     let encoded_pass_phrase = hasher.result_str();
-
 
     let uuid_option = get_uuid(encoded_pass_phrase, pool);
 
@@ -165,7 +164,6 @@ fn handle_login(request: Request, login: Login, pool: &Pool) -> Result<(), IoErr
             Some(response)
         }
     };
-
 
     if response.is_none() {
         let mut response = Response::new_empty(StatusCode(500));

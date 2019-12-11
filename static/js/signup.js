@@ -2,11 +2,14 @@ class Signup extends HTMLElement {
     constructor() {
         super();
 
+        let passphrase = this.getAttribute('passphrase')
+
         this.attachShadow({ mode: 'open' });
         this.shadowRoot.innerHTML = `
             <form class="signup" method="post">
             <p>Ce compte n'existe pas, voulez-vous le créer ?</p>
                 <input minlength="1" placeholder="name" type="text" name="text" class="name">
+                <input type="hidden" value="${passphrase}" class="passphrase" />
                 <input type="submit" value="signup"/>
             </form>
         `
@@ -31,12 +34,14 @@ class Signup extends HTMLElement {
                    cache : "no-cache"
                 },
                 body : JSON.stringify({
-                    name: this.shadowRoot.querySelector(".name").value
+                    name: this.shadowRoot.querySelector(".name").value,
+                    passphrase: this.shadowRoot.querySelector(".passphrase").value
                 }),
             })
             .then(res => res.text()) // parse response as JSON with res.json
             .then(response => {
-                this.shadowRoot.innerHTML = `please reload and login ( for now :s ) `
+                    var event = new CustomEvent('_auth_login', { 'detail': response });
+                    document.dispatchEvent(event);
              })
             .catch(err => {
                 console.log({service:"auth", status:"KO", error:err})

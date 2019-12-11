@@ -17,9 +17,7 @@ class Logout extends HTMLElement {
 
     _logout(e){
         e.preventDefault();
-        var event = new CustomEvent('logout');
-//        this.dispatchEvent(event);
-//        this.shadowRoot.dispatchEvent(event);
+        var event = new CustomEvent('_auth_logout');
         document.dispatchEvent(event);
     }
 
