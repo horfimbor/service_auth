@@ -4,14 +4,24 @@ class Logout extends HTMLElement {
 
         this.attachShadow({ mode: 'open' });
         this.shadowRoot.innerHTML = `<button class="logout">Logout</button>`
+
     }
 
     connectedCallback() {
-        this.shadowRoot.querySelector(".logout").addEventListener('submit', this._logout.bind(this));
+        this.shadowRoot.querySelector(".logout").addEventListener('click', this._logout.bind(this));
     }
 
     disconnectedCallback() {
-        this.shadowRoot.querySelector(".logout").removeEventListener('submit', this._logout);
+        this.shadowRoot.querySelector(".logout").removeEventListener('click', this._logout);
     }
+
+    _logout(e){
+        e.preventDefault();
+        var event = new CustomEvent('logout');
+//        this.dispatchEvent(event);
+//        this.shadowRoot.dispatchEvent(event);
+        document.dispatchEvent(event);
+    }
+
 }
 customElements.define('hf-auth-logout', Logout);
