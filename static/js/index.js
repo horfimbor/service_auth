@@ -5,8 +5,10 @@ class Auth extends HTMLElement {
         this.attachShadow({ mode: 'open' });
         this._step = 'login'
 
-
-        if(this._getJwt()){
+        var jwt = this._getJwt()
+        if(jwt){
+            var event = new CustomEvent('auth-jwt', { 'detail': jwt });
+            document.dispatchEvent(event);
             this._step = 'logout'
         }else{
             this._step = 'login'
