@@ -33,6 +33,7 @@ class Auth extends HTMLElement {
        document.addEventListener('_auth_login', this._login.bind(this));
        document.addEventListener('_auth_signup', this._signup.bind(this));
        document.addEventListener('_auth_logout', this._logout.bind(this));
+       document.addEventListener('_auth_abort', this._logout.bind(this))
 
     }
 
@@ -40,6 +41,7 @@ class Auth extends HTMLElement {
        document.removeEventListener('_auth_login', this._login);
        document.removeEventListener('_auth_signup', this._signup);
        document.removeEventListener('_auth_logout', this._logout);
+       document.removeEventListener('_auth_abort', this._logout)
     }
 
     _render(){
