@@ -6,12 +6,11 @@ class Signup extends HTMLElement {
 
         this.attachShadow({ mode: 'open' });
         this.shadowRoot.innerHTML = `
-            <form class="signup" method="post">
-            <p>Ce compte n'existe pas, voulez-vous le créer ?</p>
+            <hf-form class="logout" text="Ce compte n'existe pas, voulez-vous le créer ?">
                 <input minlength="1" placeholder="name" type="text" name="text" class="name" required/>
                 <input type="hidden" value="${passphrase}" class="passphrase" />
                 <hf-button content="signup" class="submit"></hf-button>
-            </form>
+            </hf-form>
         `
     }
 

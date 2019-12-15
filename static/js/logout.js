@@ -4,7 +4,10 @@ class Logout extends HTMLElement {
 
         this.attachShadow({ mode: 'open' });
         this.shadowRoot.innerHTML = `
-            <hf-button content="logout" class="logout"></hf-button>
+
+            <hf-form class="login" text="Changer de compte">
+                <hf-button content="logout" class="logout"></hf-button>
+            </hf-form>
         `
 
     }

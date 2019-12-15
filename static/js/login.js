@@ -4,25 +4,10 @@ class Login extends HTMLElement {
 
         this.attachShadow({ mode: 'open' });
         this.shadowRoot.innerHTML = `
-        <style>
-            input{
-              background-color: yellow;
-            }
-
-            input:invalid {
-              border: 2px dashed red;
-              background-color: red;
-            }
-
-            input:valid {
-              border: 1px solid black;
-              background-color: blue;
-            }
-        </style
-            <form class="login" method="post">
+            <hf-form class="login" text="who are you ?">
                 <input minlength="5" placeholder="passphrase" type="password" name="passphrase" class="passphrase" required/>
                 <hf-button content="login" class="submit"></hf-button>
-            </form>
+            </hf-form>
         `
     }
 
