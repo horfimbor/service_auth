@@ -8,23 +8,30 @@ class Signup extends HTMLElement {
         this.shadowRoot.innerHTML = `
             <form class="signup" method="post">
             <p>Ce compte n'existe pas, voulez-vous le créer ?</p>
-                <input minlength="1" placeholder="name" type="text" name="text" class="name">
+                <input minlength="1" placeholder="name" type="text" name="text" class="name" required/>
                 <input type="hidden" value="${passphrase}" class="passphrase" />
-                <input type="submit" value="signup"/>
+                <hf-button content="signup" class="submit"></hf-button>
             </form>
         `
     }
 
     connectedCallback() {
-        this.shadowRoot.querySelector("form.signup").addEventListener('submit', this._signup.bind(this));
+        this.shadowRoot.querySelector(".submit").addEventListener('click', this._signup.bind(this));
     }
 
     disconnectedCallback() {
-        this.shadowRoot.querySelector("form.signup").removeEventListener('submit', this._signup);
+        this.shadowRoot.querySelector(".submit").removeEventListener('click', this._signup);
     }
 
     _signup(e) {
         e.preventDefault();
+
+        let invalid =  this.shadowRoot.querySelector(":invalid");
+
+        if( invalid){
+            return;
+        }
+
 
         console.debug(this.shadowRoot.querySelector(".name").value)
 

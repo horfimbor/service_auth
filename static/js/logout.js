@@ -3,7 +3,9 @@ class Logout extends HTMLElement {
         super();
 
         this.attachShadow({ mode: 'open' });
-        this.shadowRoot.innerHTML = `<button class="logout">Logout</button>`
+        this.shadowRoot.innerHTML = `
+            <hf-button content="logout" class="logout"></hf-button>
+        `
 
     }
 
