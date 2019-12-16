@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate mysql;
 
+#[macro_use]
 extern crate serde_json;
 
 use std::io::{Error as IoError, Read};
@@ -9,8 +10,10 @@ use std::fs;
 
 use crypto::sha1::Sha1;
 use crypto::digest::Digest;
+use eventstore::Connection;
+use futures::{Future};
 use mysql::Pool;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize };
 use tiny_http::{Method, Request, Response, Server, StatusCode};
 use uuid::Uuid;
 
@@ -32,8 +35,19 @@ struct Account {
     is_admin: bool,
 }
 
+struct Dbs {
+    sql: Pool,
+    event: Connection,
+}
+
+#[derive(Serialize)]
+struct AccountCreated {
+    uuid: String,
+    name: String,
+}
+
 fn main() {
-    let pool = init_bdd();
+    let dbs = init_bdd();
 
     let server = Server::http("0.0.0.0:8000").unwrap();
 
@@ -45,7 +59,7 @@ fn main() {
                  request.url(),
                  request.headers(),
         );
-        match handle(request, &pool) {
+        match handle(request, &dbs) {
             Err(_e) => {
                 println!("cannot respond")
             }
@@ -54,10 +68,10 @@ fn main() {
     }
 }
 
-fn init_bdd() -> Pool {
+fn init_bdd() -> Dbs {
     // TODO check env == dev
 
-    let pool = match mysql::Pool::new("mysql://root:rootpwd@infra_dev_db_1:3306/service_auth") {
+    let sql = match mysql::Pool::new("mysql://root:rootpwd@infra_dev_db_1:3306/service_auth") {
         Ok(pool) => {
             pool
         }
@@ -69,18 +83,26 @@ fn init_bdd() -> Pool {
         }
     };
 
-    pool.prep_exec(r"CREATE TABLE if not exists account (
+    sql.prep_exec(r"CREATE TABLE if not exists account (
                          passphrase varchar(50) not null,
                          uuid varchar(50) not null,
+                         name varchar(255) not null,
                          is_admin tinyint not null default 0
                      )", ()).unwrap();
 
-    pool
+
+    let event = Connection::builder()
+        .single_node_connection("172.28.1.1:1113".parse().unwrap());
+
+    Dbs {
+        sql,
+        event,
+    }
 }
 
-fn handle(request: Request, pool: &Pool) -> Result<(), IoError> {
+fn handle(request: Request, dbs: &Dbs) -> Result<(), IoError> {
     if request.method() == &Method::Post {
-        handle_post(request, &pool)
+        handle_post(request, &dbs)
     } else if request.method() == &Method::Get {
         handle_get(request)
     } else if request.method() == &Method::Options {
@@ -92,7 +114,7 @@ fn handle(request: Request, pool: &Pool) -> Result<(), IoError> {
     }
 }
 
-fn handle_post(mut request: Request, pool: &Pool) -> Result<(), IoError> {
+fn handle_post(mut request: Request, dbs: &Dbs) -> Result<(), IoError> {
     let mut content = String::new();
 
 
@@ -103,7 +125,7 @@ fn handle_post(mut request: Request, pool: &Pool) -> Result<(), IoError> {
         let deserialize: serde_json::Result<Login> = serde_json::from_str(&content.as_str());
         match deserialize {
             Ok(login) => {
-                return handle_login(request, login, &pool);
+                return handle_login(request, login, &dbs);
             }
             Err(_e) => {
                 let mut response = Response::new_empty(StatusCode(500));
@@ -115,7 +137,7 @@ fn handle_post(mut request: Request, pool: &Pool) -> Result<(), IoError> {
         let deserialize: serde_json::Result<Signup> = serde_json::from_str(&content.as_str());
         match deserialize {
             Ok(signup) => {
-                return handle_signup(request, signup, &pool);
+                return handle_signup(request, signup, &dbs);
             }
             Err(_e) => {
                 let mut response = Response::new_empty(StatusCode(500));
@@ -130,7 +152,7 @@ fn handle_post(mut request: Request, pool: &Pool) -> Result<(), IoError> {
     return request.respond(response);
 }
 
-fn handle_login(request: Request, login: Login, pool: &Pool) -> Result<(), IoError> {
+fn handle_login(request: Request, login: Login, dbs: &Dbs) -> Result<(), IoError> {
     let mut hasher = Sha1::new();
 
     // TODO add salt
@@ -138,7 +160,7 @@ fn handle_login(request: Request, login: Login, pool: &Pool) -> Result<(), IoErr
 
     let encoded_pass_phrase = hasher.result_str();
 
-    let uuid_option = get_uuid(encoded_pass_phrase, pool);
+    let uuid_option = get_uuid(encoded_pass_phrase, dbs);
 
     let response = match uuid_option {
         Some(uuid) => {
@@ -170,12 +192,11 @@ fn handle_login(request: Request, login: Login, pool: &Pool) -> Result<(), IoErr
         add_cors(&request, &mut response);
         request.respond(response)
     } else {
-
         request.respond(response.unwrap())
     }
 }
 
-fn handle_signup(request: Request, signup: Signup, pool: &Pool) -> Result<(), IoError> {
+fn handle_signup(request: Request, signup: Signup, dbs: &Dbs) -> Result<(), IoError> {
     let mut hasher = Sha1::new();
 
     // TODO add salt
@@ -185,15 +206,31 @@ fn handle_signup(request: Request, signup: Signup, pool: &Pool) -> Result<(), Io
 
     let uuid = Uuid::new_v4();
 
-    pool.prep_exec("INSERT INTO account (passphrase, uuid) VALUES (:pp , :uuid)",
-                   params! {"pp" => encoded_pass_phrase, "uuid" => uuid.to_string() }).unwrap();
+    dbs.sql.prep_exec("INSERT INTO account (passphrase, name, uuid) VALUES (:pp , :name , :uuid)",
+                      params! {"pp" => encoded_pass_phrase, "uuid" => uuid.to_string() , "name" => signup.name.clone() }).unwrap();
 
     let encoded_pass_phrase = hasher.result_str();
 
-    let uuid_option = get_uuid(encoded_pass_phrase, pool);
+    let uuid_option = get_uuid(encoded_pass_phrase, dbs);
+
 
     let response = match uuid_option {
         Some(uuid) => {
+            let payload = json!(
+            AccountCreated{
+                uuid: uuid.to_string(),
+                name: signup.name,
+            });
+
+            let event = eventstore::EventData::json("account_created", payload).unwrap();
+
+            let _ = dbs.event.write_events("account")
+                .push_event(event)
+                .execute()
+                .wait()
+                .unwrap();
+
+
             let data = mod_token::Data::new(uuid);
 
             match mod_token::generate_token(data)
@@ -224,10 +261,10 @@ fn handle_signup(request: Request, signup: Signup, pool: &Pool) -> Result<(), Io
     }
 }
 
-fn get_uuid(encoded_pass_phrase: String, pool: &Pool) -> Option<Uuid> {
+fn get_uuid(encoded_pass_phrase: String, dbs: &Dbs) -> Option<Uuid> {
     let pp = encoded_pass_phrase.clone();
     let accounts: Vec<Account> =
-        pool.prep_exec("SELECT passphrase, uuid, is_admin FROM account WHERE passphrase = :pp", params! {pp})
+        dbs.sql.prep_exec("SELECT passphrase, uuid, is_admin FROM account WHERE passphrase = :pp", params! {pp})
             .map(|result| {
                 result.map(|x| x.unwrap())
                     .map(|row| {
@@ -290,6 +327,9 @@ fn handle_option(request: Request) -> Result<(), IoError> {
 }
 
 fn add_cors<T: Read>(request: &Request, response: &mut Response<T>) {
+
+    //TODO check main domain
+
     for h in request.headers() {
         if h.field.equiv("Origin") {
             let header = tiny_http::Header::from_bytes(&b"Access-Control-Allow-Origin"[..], h.value.as_bytes()).unwrap();
