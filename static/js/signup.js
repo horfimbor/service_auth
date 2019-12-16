@@ -9,9 +9,9 @@ class Signup extends HTMLElement {
             <hf-form class="logout" text="Ce compte n'existe pas, voulez-vous le créer ?">
                 <input minlength="1" placeholder="name" type="text" name="text" class="name" required/>
                 <input type="hidden" value="${passphrase}" class="passphrase" />
-                <hf-button content="signup" class="submit"></hf-button>
+                <hf-button content="signup" class="submit" purpose="good"></hf-button>
                 <br/>
-                <hf-button content="try again" class="abort"></hf-button>
+                <hf-button content="try again" class="abort" purpose="bad"></hf-button>
             </hf-form>
         `
     }

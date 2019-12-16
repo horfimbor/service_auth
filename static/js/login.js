@@ -6,7 +6,7 @@ class Login extends HTMLElement {
         this.shadowRoot.innerHTML = `
             <hf-form class="login" text="who are you ?">
                 <input minlength="5" placeholder="passphrase" type="password" name="passphrase" class="passphrase" required/>
-                <hf-button content="login" class="submit"></hf-button>
+                <hf-button content="login" class="submit" purpose="good"></hf-button>
             </hf-form>
         `
     }
