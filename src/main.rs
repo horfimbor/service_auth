@@ -92,7 +92,7 @@ fn init_bdd() -> Dbs {
 
 
     let event = Connection::builder()
-        .single_node_connection("127.0.0.1:1113".parse().unwrap());
+        .single_node_connection("172.28.1.1:1113".parse().unwrap());
 
     Dbs {
         sql,
