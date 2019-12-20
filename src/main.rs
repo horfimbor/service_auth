@@ -40,12 +40,6 @@ struct Dbs {
     event: Connection,
 }
 
-#[derive(Serialize)]
-struct AccountCreated {
-    uuid: String,
-    name: String,
-}
-
 fn main() {
     let dbs = init_bdd();
 
@@ -217,7 +211,7 @@ fn handle_signup(request: Request, signup: Signup, dbs: &Dbs) -> Result<(), IoEr
     let response = match uuid_option {
         Some(uuid) => {
             let payload = json!(
-            AccountCreated{
+            event_auth::AccountCreated{
                 uuid: uuid.to_string(),
                 name: signup.name,
             });

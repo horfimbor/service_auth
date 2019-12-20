@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 mod_token = { git = "https://github.com/horfimbor/mod_token" }
+event_auth = { git = "https://github.com/horfimbor/event_auth" }
 
 eventstore = "0.5.0"
 futures = "0.1"
