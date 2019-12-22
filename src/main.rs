@@ -11,7 +11,7 @@ use std::fs;
 use crypto::sha1::Sha1;
 use crypto::digest::Digest;
 use eventstore::Connection;
-use futures::{Future};
+use futures::executor;
 use mysql::Pool;
 use serde::{Deserialize, Serialize };
 use tiny_http::{Method, Request, Response, Server, StatusCode};
@@ -218,11 +218,13 @@ fn handle_signup(request: Request, signup: Signup, dbs: &Dbs) -> Result<(), IoEr
 
             let event = eventstore::EventData::json("account_created", payload).unwrap();
 
-            let _ = dbs.event.write_events("account")
-                .push_event(event)
-                .execute()
-                .wait()
-                .unwrap();
+            let send = async{
+                dbs.event.write_events("account")
+                    .push_event(event)
+                    .execute()
+            };
+
+            let _ = executor::block_on(send);
 
 
             let data = mod_token::Data::new(uuid);
