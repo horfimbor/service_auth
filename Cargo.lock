@@ -314,8 +314,9 @@ dependencies = [
 [[package]]
 name = "event_auth"
 version = "0.1.0"
-source = "git+https://github.com/horfimbor/event_auth#471eef6ac93fc48aa75286ca4f8cb8800f964c54"
+source = "git+https://github.com/horfimbor/event_auth#d111e8a52deec3a25284f3802140f1032b220677"
 dependencies = [
+ "mod_event 0.1.0 (git+https://github.com/horfimbor/mod_event)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.44 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -839,6 +840,11 @@ dependencies = [
  "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "ws2_32-sys 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "mod_event"
+version = "0.1.0"
+source = "git+https://github.com/horfimbor/mod_event#8858d0d10ffbf23648450c3dc922c3f91eef159b"
 
 [[package]]
 name = "mod_token"
@@ -2135,6 +2141,7 @@ dependencies = [
 "checksum mio 0.6.21 (registry+https://github.com/rust-lang/crates.io-index)" = "302dec22bcf6bae6dfb69c647187f4b4d0fb6f535521f7bc022430ce8e12008f"
 "checksum mio-uds 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)" = "966257a94e196b11bb43aca423754d87429960a768de9414f3691d6957abf125"
 "checksum miow 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "8c1f2f3b1cf331de6896aabf6e9d55dca90356cc9960cca7eaaf408a355ae919"
+"checksum mod_event 0.1.0 (git+https://github.com/horfimbor/mod_event)" = "<none>"
 "checksum mod_token 0.1.0 (git+https://github.com/horfimbor/mod_token)" = "<none>"
 "checksum mysql 17.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "97e55eacc45dc8b61e595de541460ffaa4eaf9851c449e757fa478814464c606"
 "checksum mysql_common 0.19.2 (registry+https://github.com/rust-lang/crates.io-index)" = "b7f3fa60743383c5e5719b68a134531074e83e550b97182e4a24ad5220a8e974"
