@@ -16,6 +16,7 @@ use uuid::Uuid;
 use event_auth::{GlobalAuthEvent, AccountCreated};
 use event_auth::AuthEventList::Created;
 use mod_event::PublicEvent;
+use bytes::Bytes;
 
 #[derive(Debug, Deserialize)]
 struct Login {
@@ -218,7 +219,7 @@ fn handle_signup(request: Request, signup: Signup, dbs: &Dbs) -> Result<(), IoEr
             };
             let (event_type, event_data) = event.get_json().unwrap();
 
-            let event_data = eventstore::EventData::json(event_type, event_data).unwrap();
+            let event_data = eventstore::EventData::binary(event_type, Bytes::from(event_data.as_bytes()));
 
             let send = async {
                 dbs.event.write_events(event.stream_name())
