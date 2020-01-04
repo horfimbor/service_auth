@@ -1,9 +1,6 @@
 #[macro_use]
 extern crate mysql;
 
-#[macro_use]
-extern crate serde_json;
-
 use std::io::{Error as IoError, Read};
 use std::path::Path;
 use std::fs;
@@ -13,9 +10,12 @@ use crypto::digest::Digest;
 use eventstore::Connection;
 use futures::executor;
 use mysql::Pool;
-use serde::{Deserialize, Serialize };
+use serde::{Deserialize};
 use tiny_http::{Method, Request, Response, Server, StatusCode};
 use uuid::Uuid;
+use event_auth::{GlobalAuthEvent, AccountCreated};
+use event_auth::AuthEventList::Created;
+use mod_event::PublicEvent;
 
 #[derive(Debug, Deserialize)]
 struct Login {
@@ -210,17 +210,19 @@ fn handle_signup(request: Request, signup: Signup, dbs: &Dbs) -> Result<(), IoEr
 
     let response = match uuid_option {
         Some(uuid) => {
-            let payload = json!(
-            event_auth::AccountCreated{
-                uuid: uuid.to_string(),
-                name: signup.name,
-            });
+            let event = GlobalAuthEvent {
+                events: Created(AccountCreated {
+                    uuid: uuid.to_string(),
+                    name: signup.name,
+                })
+            };
+            let (event_type, event_data) = event.get_json().unwrap();
 
-            let event = eventstore::EventData::json("account_created", payload).unwrap();
+            let event_data = eventstore::EventData::json(event_type, event_data).unwrap();
 
-            let send = async{
-                dbs.event.write_events("account")
-                    .push_event(event)
+            let send = async {
+                dbs.event.write_events(event.stream_name())
+                    .push_event(event_data)
                     .execute()
             };
 

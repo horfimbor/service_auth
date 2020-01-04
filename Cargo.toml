@@ -7,6 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+mod_event = { git = "https://github.com/horfimbor/mod_event" }
 mod_token = { git = "https://github.com/horfimbor/mod_token" }
 event_auth = { git = "https://github.com/horfimbor/event_auth" }
 

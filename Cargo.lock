@@ -314,7 +314,7 @@ dependencies = [
 [[package]]
 name = "event_auth"
 version = "0.1.0"
-source = "git+https://github.com/horfimbor/event_auth#d111e8a52deec3a25284f3802140f1032b220677"
+source = "git+https://github.com/horfimbor/event_auth#f6c32f1a91694e4c713b1710e49a4b573aa1464c"
 dependencies = [
  "mod_event 0.1.0 (git+https://github.com/horfimbor/mod_event)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1563,6 +1563,7 @@ dependencies = [
  "event_auth 0.1.0 (git+https://github.com/horfimbor/event_auth)",
  "eventstore 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mod_event 0.1.0 (git+https://github.com/horfimbor/mod_event)",
  "mod_token 0.1.0 (git+https://github.com/horfimbor/mod_token)",
  "mysql 17.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust-crypto 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1881,7 +1882,7 @@ name = "twox-hash"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "rand 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.23 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
