@@ -12,7 +12,7 @@ mod_token = { git = "https://github.com/horfimbor/mod_token" }
 event_auth = { git = "https://github.com/horfimbor/event_auth" }
 
 bytes = "0.4"
-eventstore = "0.5.1"
+eventstore = "0.9.1"
 futures = "0.3"
 mysql = "17.0.0"
 rust-crypto = "^0.2"
