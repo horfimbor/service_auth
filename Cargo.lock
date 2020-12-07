@@ -1737,7 +1737,7 @@ dependencies = [
 name = "service_auth"
 version = "0.1.0"
 dependencies = [
- "bytes 0.4.12",
+ "bytes 0.5.3",
  "event_auth",
  "eventstore",
  "futures 0.3.1",
